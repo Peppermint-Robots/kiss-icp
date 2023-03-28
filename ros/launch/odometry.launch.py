@@ -38,15 +38,17 @@ def generate_launch_description():
     return LaunchDescription(
         [
             # ROS2 parameters
-            DeclareLaunchArgument("topic", description="sensor_msg/PointCloud2 topic to process"),
+            DeclareLaunchArgument(
+                "topic", description="sensor_msg/PointCloud2 topic to process"
+            ),
             DeclareLaunchArgument("bagfile", default_value=""),
             DeclareLaunchArgument("visualize", default_value="true"),
             DeclareLaunchArgument("odom_frame", default_value="odom"),
             DeclareLaunchArgument("child_frame", default_value="base_link"),
             # KISS-ICP parameters
             DeclareLaunchArgument("deskew", default_value="false"),
-            DeclareLaunchArgument("max_range", default_value="100.0"),
-            DeclareLaunchArgument("min_range", default_value="5.0"),
+            DeclareLaunchArgument("max_range", default_value="40.0"),
+            DeclareLaunchArgument("min_range", default_value="2.0"),
             # This thing is still not suported: https://github.com/ros2/launch/issues/290#issuecomment-1438476902
             #  DeclareLaunchArgument("voxel_size", default_value=None),
             Node(
@@ -63,17 +65,38 @@ def generate_launch_description():
                         "min_range": LaunchConfiguration("min_range"),
                         "deskew": LaunchConfiguration("deskew"),
                         #  "voxel_size": LaunchConfiguration("voxel_size"),
-                        "max_points_per_voxel": 20,
+                        "max_points_per_voxel": 30,
                         "initial_threshold": 2.0,
-                        "min_motion_th": 0.1,
+                        "min_motion_th": 0.5,
                     }
                 ],
+            ),
+            Node(
+                package="kiss_icp",
+                executable="scan_to_pc",
+                output="screen",
+                parameters=[
+                    {
+                        "odom_frame": LaunchConfiguration("odom_frame"),
+                        "child_frame": LaunchConfiguration("child_frame"),
+                    }
+                ],
+            ),
+            Node(
+                package="robot_calibration_toolbox",
+                executable="odom_lidar_calib.py",
+                remappings=[("/wheel_odom", "/odom"), ("/lidar_odom", "/odom_laser")],
+                output="screen",
+                parameters=[{"use_sim_time": LaunchConfiguration("use_sim_time")}],
             ),
             Node(
                 package="rviz2",
                 executable="rviz2",
                 output={"both": "log"},
-                arguments=["-d", PathJoinSubstitution([current_pkg, "rviz", "kiss_icp_ros2.rviz"])],
+                arguments=[
+                    "-d",
+                    PathJoinSubstitution([current_pkg, "rviz", "kiss_icp_ros2.rviz"]),
+                ],
                 condition=IfCondition(LaunchConfiguration("visualize")),
             ),
             ExecuteProcess(

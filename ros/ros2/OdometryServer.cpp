@@ -35,6 +35,9 @@
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
+#include "pcl/point_cloud.h"
+#include "pcl/point_types.h"
+#include "pcl_conversions/pcl_conversions.h"
 #include "rclcpp/qos.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
@@ -65,8 +68,8 @@ OdometryServer::OdometryServer() : rclcpp::Node("odometry_node") {
     odometry_ = kiss_icp::pipeline::KissICP(config_);
 
     // Intialize subscribers
-    pointcloud_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
-        "pointcloud_topic", rclcpp::SensorDataQoS(),
+    pc_from_laser_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
+        "pc_from_laser", rclcpp::SensorDataQoS(),
         std::bind(&OdometryServer::RegisterFrame, this, std::placeholders::_1));
 
     // Intialize publishers
@@ -107,8 +110,8 @@ OdometryServer::OdometryServer() : rclcpp::Node("odometry_node") {
 void OdometryServer::RegisterFrame(const sensor_msgs::msg::PointCloud2::SharedPtr msg_ptr) {
     // ROS2::Foxy can't handle a callback to const MessageT&, so we hack it here
     // https://github.com/ros2/rclcpp/pull/1598
-    const sensor_msgs::msg::PointCloud2 &msg = *msg_ptr;
-    const auto points = utils::PointCloud2ToEigen(msg);
+    const sensor_msgs::msg::PointCloud2 &point_cloud = *msg_ptr;
+    const auto points = utils::PointCloud2ToEigen(point_cloud);
     const auto timestamps = [&]() -> std::vector<double> {
         if (!config_.deskew) return {};
         return utils::GetTimestamps(msg);
@@ -126,7 +129,7 @@ void OdometryServer::RegisterFrame(const sensor_msgs::msg::PointCloud2::SharedPt
 
     // Broadcast the tf
     geometry_msgs::msg::TransformStamped transform_msg;
-    transform_msg.header.stamp = msg.header.stamp;
+    transform_msg.header.stamp = point_cloud.header.stamp;
     transform_msg.header.frame_id = odom_frame_;
     transform_msg.child_frame_id = child_frame_;
     transform_msg.transform.rotation.x = q_current.x();
@@ -140,7 +143,7 @@ void OdometryServer::RegisterFrame(const sensor_msgs::msg::PointCloud2::SharedPt
 
     // publish odometry msg
     nav_msgs::msg::Odometry odom_msg;
-    odom_msg.header.stamp = msg.header.stamp;
+    odom_msg.header.stamp = point_cloud.header.stamp;
     odom_msg.header.frame_id = odom_frame_;
     odom_msg.child_frame_id = child_frame_;
     odom_msg.pose.pose.orientation.x = q_current.x();
@@ -160,13 +163,13 @@ void OdometryServer::RegisterFrame(const sensor_msgs::msg::PointCloud2::SharedPt
     traj_publisher_->publish(path_msg_);
 
     // Publish KISS-ICP internal data, just for debugging
-    std_msgs::msg::Header frame_header = msg.header;
+    std_msgs::msg::Header frame_header = point_cloud.header;
     frame_header.frame_id = child_frame_;
     frame_publisher_->publish(utils::EigenToPointCloud2(frame, frame_header));
     kpoints_publisher_->publish(utils::EigenToPointCloud2(keypoints, frame_header));
 
     // Map is referenced to the odometry_frame
-    auto local_map_header = msg.header;
+    auto local_map_header = point_cloud.header;
     local_map_header.frame_id = odom_frame_;
     map_publisher_->publish(utils::EigenToPointCloud2(odometry_.LocalMap(), local_map_header));
 }

@@ -51,8 +51,20 @@ if(CATKIN_DEVEL_PREFIX OR catkin_FOUND OR CATKIN_BUILD_BINARY_PACKAGE)
                rosbag
                std_msgs
                tf2
-               tf2_ros)
+               tf2_ros
+               laser_geometry
+               pcl_ros
+               pcl_conversions
+               pcl_msgs)
+
   catkin_package()
+
+  catkin_package(INCLUDE_DIRS include
+  LIBRARIES ${PROJECT_NAME}
+  CATKIN_DEPENDS pcl_conversions pcl_ros pcl_msgs tf2 tf2_ros roscpp rospy sensor_msgs laser_geometry
+  DEPENDS
+  )
+
 
   # ROS1 node
   add_executable(odometry_node ros1/OdometryServer.cpp)
@@ -68,14 +80,24 @@ elseif(DEFINED ENV{AMENT_PREFIX_PATH})
   find_package(rclcpp REQUIRED)
   find_package(sensor_msgs REQUIRED)
   find_package(tf2_ros REQUIRED)
+  find_package(PCL REQUIRED)
+  find_package(pcl_ros REQUIRED)
+  find_package(pcl_msgs REQUIRED)
+  find_package(pcl_conversions REQUIRED)  
+  find_package(laser_geometry REQUIRED)  
+
 
   # ROS2 node
   add_executable(odometry_node ros2/OdometryServer.cpp)
   target_include_directories(odometry_node PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_include_directories(scan_to_pc PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_link_libraries(scan_to_pc kiss_icp::pipeline ${PCL_LIBRARIES})
   target_link_libraries(odometry_node kiss_icp::pipeline)
   install(TARGETS odometry_node RUNTIME DESTINATION lib/${PROJECT_NAME})
+  install(TARGETS scan_to_pc RUNTIME DESTINATION lib/${PROJECT_NAME})
   install(DIRECTORY launch rviz DESTINATION share/${PROJECT_NAME}/)
-  ament_target_dependencies(odometry_node rclcpp nav_msgs sensor_msgs tf2_ros)
+  ament_target_dependencies(odometry_node rclcpp nav_msgs sensor_msgs tf2_ros pcl_conversions laser_geometry)
+  ament_target_dependencies(scan_to_pc rclcpp nav_msgs sensor_msgs tf2_ros pcl_conversions laser_geometry)
   ament_package()
 else()
   message(FATAL_ERROR "catkin or colcon not found KISS-ICP-ROS disabled")
