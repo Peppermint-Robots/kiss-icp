@@ -32,6 +32,8 @@ from launch.substitutions import (
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
+from ppmt_nav_common import common_utils
+
 
 def generate_launch_description():
     current_pkg = FindPackageShare("kiss_icp")
@@ -73,6 +75,7 @@ def generate_launch_description():
             ),
             Node(
                 package="kiss_icp",
+                namespace=common_utils.get_robot_name(),
                 executable="scan_to_pc",
                 output="screen",
                 parameters=[
@@ -84,6 +87,7 @@ def generate_launch_description():
             ),
             Node(
                 package="robot_calibration_toolbox",
+                namespace=common_utils.get_robot_name(),
                 executable="odom_lidar_calib.py",
                 remappings=[("/wheel_odom", "/odom"), ("/lidar_odom", "/odom_laser")],
                 output="screen",
