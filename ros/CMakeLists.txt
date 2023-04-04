@@ -53,6 +53,7 @@ if(CATKIN_DEVEL_PREFIX OR catkin_FOUND OR CATKIN_BUILD_BINARY_PACKAGE)
                tf2
                tf2_ros
                laser_geometry
+               PCL
                pcl_ros
                pcl_conversions
                pcl_msgs)
@@ -65,11 +66,16 @@ if(CATKIN_DEVEL_PREFIX OR catkin_FOUND OR CATKIN_BUILD_BINARY_PACKAGE)
   DEPENDS
   )
 
+  include_directories(
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}
+)
 
   # ROS1 node
   add_executable(odometry_node ros1/OdometryServer.cpp)
   target_include_directories(odometry_node PUBLIC include ${catkin_INCLUDE_DIRS})
-  target_link_libraries(odometry_node kiss_icp::pipeline ${catkin_LIBRARIES})
+  target_link_libraries(odometry_node kiss_icp::pipeline ${catkin_LIBRARIES} ${PCL_LIBRARIES})
   install(TARGETS odometry_node RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
   install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 elseif(DEFINED ENV{AMENT_PREFIX_PATH})
@@ -89,10 +95,11 @@ elseif(DEFINED ENV{AMENT_PREFIX_PATH})
 
   # ROS2 node
   add_executable(odometry_node ros2/OdometryServer.cpp)
+  add_executable(scan_to_pc ros2/scan_to_pc.cpp)
   target_include_directories(odometry_node PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_include_directories(scan_to_pc PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_link_libraries(scan_to_pc kiss_icp::pipeline ${PCL_LIBRARIES})
-  target_link_libraries(odometry_node kiss_icp::pipeline)
+  target_link_libraries(odometry_node kiss_icp::pipeline ${PCL_LIBRARIES})
   install(TARGETS odometry_node RUNTIME DESTINATION lib/${PROJECT_NAME})
   install(TARGETS scan_to_pc RUNTIME DESTINATION lib/${PROJECT_NAME})
   install(DIRECTORY launch rviz DESTINATION share/${PROJECT_NAME}/)

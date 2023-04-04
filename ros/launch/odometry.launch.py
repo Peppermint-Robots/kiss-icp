@@ -37,13 +37,28 @@ from ppmt_nav_common import common_utils
 
 def generate_launch_description():
     current_pkg = FindPackageShare("kiss_icp")
+    bagfile_path = PathJoinSubstitution(
+        [current_pkg, "bagfiles", "tug_2t_zero_odom_mid"]
+    )
+
     return LaunchDescription(
         [
             # ROS2 parameters
             DeclareLaunchArgument(
-                "topic", description="sensor_msg/PointCloud2 topic to process"
+                "topic",
+                default_value="pc_from_laser",
+                description="sensor_msg/PointCloud2 topic to process",
             ),
-            DeclareLaunchArgument("bagfile", default_value=""),
+            DeclareLaunchArgument(
+                "bagfile",
+                default_value=bagfile_path,
+            ),
+            DeclareLaunchArgument(
+                "use_sim_time",
+                default_value="false",
+                choices=["true", "false"],
+                description="Use sim time",
+            ),
             DeclareLaunchArgument("visualize", default_value="true"),
             DeclareLaunchArgument("odom_frame", default_value="odom"),
             DeclareLaunchArgument("child_frame", default_value="base_link"),

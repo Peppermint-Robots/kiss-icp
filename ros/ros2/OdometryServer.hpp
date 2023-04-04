@@ -26,11 +26,20 @@
 #include "kiss_icp/pipeline/KissICP.hpp"
 
 // ROS2
+#include "laser_geometry/laser_geometry.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
+#include "pcl/point_cloud.h"
+#include "pcl/point_types.h"
+#include "pcl_conversions/pcl_conversions.h"
 #include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/laser_scan.h"
 #include "sensor_msgs/msg/point_cloud2.hpp"
+#include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_broadcaster.h"
+#include "tf2_ros/transform_listener.h"
+
+typedef pcl::PointXYZI PointType;
 
 namespace kiss_icp_ros {
 
@@ -51,7 +60,7 @@ private:
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
     /// Data subscribers.
-    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_sub_;
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pc_from_laser_sub_;
 
     /// Data publishers.
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_publisher_;
@@ -68,6 +77,29 @@ private:
     kiss_icp::pipeline::KISSConfig config_;
 
     /// Global/map coordinate frame.
+    std::string odom_frame_{"odom"};
+    std::string child_frame_{"base_link"};
+};
+
+class ScanToPCL : public rclcpp::Node {
+public:
+    ScanToPCL();
+
+private:
+    void ScanToPC(const sensor_msgs::msg::LaserScan::SharedPtr msg_ptr);
+
+private:
+    size_t queue_size_{1};
+
+    laser_geometry::LaserProjection projector_;
+
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_transform_listener_;
+
+    rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan_sub_;
+
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pc_from_laser_publisher_;
+
     std::string odom_frame_{"odom"};
     std::string child_frame_{"base_link"};
 };
