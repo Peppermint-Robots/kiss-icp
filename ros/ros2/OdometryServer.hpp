@@ -83,6 +83,7 @@ private:
 
 class ScanToPCL : public rclcpp::Node {
 public:
+    /// @brief ScanToPCL constructor
     ScanToPCL();
 
 private:
@@ -91,15 +92,20 @@ private:
 private:
     size_t queue_size_{1};
 
+    /// @brief  Turns scan data to point cloud
     laser_geometry::LaserProjection projector_;
 
+    /// @brief Tools for transform
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_transform_listener_;
 
+    /// @brief Scan subscriber
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan_sub_;
 
+    /// @brief Point cloud publisher
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pc_from_laser_publisher_;
 
+    /// Global/map coordinate frame
     std::string odom_frame_{"odom"};
     std::string child_frame_{"base_link"};
 };

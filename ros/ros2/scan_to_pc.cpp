@@ -19,8 +19,6 @@
 namespace kiss_icp_ros {
 
 ScanToPCL::ScanToPCL() : rclcpp::Node("scan_to_pcl_node") {
-    std::cout << "here3\n";
-
     child_frame_ = declare_parameter<std::string>("child_frame", child_frame_);
     odom_frame_ = declare_parameter<std::string>("odom_frame", odom_frame_);
 
@@ -43,7 +41,11 @@ ScanToPCL::ScanToPCL() : rclcpp::Node("scan_to_pcl_node") {
 
     RCLCPP_INFO(this->get_logger(), "scan to pc initialized");
 }
-
+/**
+ * @brief Converts laser scan to a 2D point cloud
+ *
+ * @param msg_ptr
+ */
 void ScanToPCL::ScanToPC(const sensor_msgs::msg::LaserScan::SharedPtr msg_ptr) {
     // ROS2::Foxy can't handle a callback to const MessageT&, so we hack it here
     // https://github.com/ros2/rclcpp/pull/1598
@@ -71,11 +73,8 @@ void ScanToPCL::ScanToPC(const sensor_msgs::msg::LaserScan::SharedPtr msg_ptr) {
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
 
-    std::cout << "here1\n";
-
     rclcpp::init(argc, argv);
 
-    std::cout << "here2\n";
     rclcpp::spin(std::make_shared<kiss_icp_ros::ScanToPCL>());
     rclcpp::shutdown();
     return 0;
