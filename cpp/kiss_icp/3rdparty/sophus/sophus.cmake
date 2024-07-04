@@ -29,3 +29,7 @@ FetchContent_Declare(sophus SYSTEM URL https://github.com/strasdat/Sophus/archiv
                      PATCH_COMMAND patch -p1 < ${CMAKE_CURRENT_LIST_DIR}/sophus.patch UPDATE_DISCONNECTED 1)
 
 FetchContent_MakeAvailable(sophus)
+
+# Install headers in include directory
+include_directories(${sophus_SOURCE_DIR}/sophus/)
+install(DIRECTORY ${sophus_SOURCE_DIR}/sophus/ DESTINATION include/sophus)

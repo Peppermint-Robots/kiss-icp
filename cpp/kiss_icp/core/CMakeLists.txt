@@ -20,7 +20,22 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-add_library(kiss_icp_core STATIC)
+add_library(kiss_icp_core SHARED)
 target_sources(kiss_icp_core PRIVATE Registration.cpp Deskew.cpp VoxelHashMap.cpp Preprocessing.cpp Threshold.cpp)
-target_link_libraries(kiss_icp_core PUBLIC Eigen3::Eigen tsl::robin_map TBB::tbb Sophus::Sophus)
+target_link_libraries(kiss_icp_core PUBLIC Eigen3::Eigen tsl::robin_map Sophus::Sophus)
 set_global_target_properties(kiss_icp_core)
+
+# Install kiss_icp_core in lib directory
+install(TARGETS kiss_icp_core
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+# Install only headers in include library
+install(
+  DIRECTORY .
+  DESTINATION include/kiss_icp/core
+  PATTERN "*.cpp" EXCLUDEq
+  PATTERN "*.txt" EXCLUDE
+)

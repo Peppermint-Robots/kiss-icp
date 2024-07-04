@@ -21,7 +21,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-add_library(kiss_icp_pipeline STATIC)
+add_library(kiss_icp_pipeline SHARED)
 target_sources(kiss_icp_pipeline PRIVATE KissICP.cpp)
 target_link_libraries(kiss_icp_pipeline PUBLIC kiss_icp_core)
 set_global_target_properties(kiss_icp_pipeline)
+
+# Install kiss_icp_pipeline in lib directory
+install(TARGETS kiss_icp_pipeline
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+# Install header files in include directory
+install(
+  DIRECTORY .
+  DESTINATION include/kiss_icp/pipeline
+  PATTERN "*.cpp" EXCLUDE
+  PATTERN "*.txt" EXCLUDE
+)
