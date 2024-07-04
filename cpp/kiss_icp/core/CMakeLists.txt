@@ -22,7 +22,7 @@
 # SOFTWARE.
 add_library(kiss_icp_core SHARED)
 target_sources(kiss_icp_core PRIVATE Registration.cpp Deskew.cpp VoxelHashMap.cpp Preprocessing.cpp Threshold.cpp)
-target_link_libraries(kiss_icp_core PUBLIC Eigen3::Eigen tsl::robin_map Sophus::Sophus)
+target_link_libraries(kiss_icp_core PUBLIC Eigen3::Eigen tsl::robin_map TBB::tbb Sophus::Sophus)
 set_global_target_properties(kiss_icp_core)
 
 # Install kiss_icp_core in lib directory
@@ -36,6 +36,6 @@ install(TARGETS kiss_icp_core
 install(
   DIRECTORY .
   DESTINATION include/kiss_icp/core
-  PATTERN "*.cpp" EXCLUDEq
+  PATTERN "*.cpp" EXCLUDE
   PATTERN "*.txt" EXCLUDE
 )

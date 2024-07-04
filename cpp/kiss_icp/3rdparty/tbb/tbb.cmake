@@ -41,3 +41,5 @@ if(NOT tbb_POPULATED)
     set_target_properties(tbb PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${tbb_include_dirs}")
   endif()
 endif()
+
+# tbb is not included in any header so no need to install headers of tbb

@@ -70,7 +70,7 @@ install(TARGETS odometry_component LIBRARY DESTINATION lib RUNTIME DESTINATION l
 install(DIRECTORY launch rviz DESTINATION share/${PROJECT_NAME}/)
 
 # This is required so cmake from other package can set kiss_icp_INCLUDE_DIRS
-ament_export_libraries(kiss_icp_pipeline)
+ament_export_libraries(kiss_icp_core kiss_icp_pipeline)
 
 # This is required so cmake from other package can set kiss_icp_LIBRARIES
 ament_export_include_directories(include)
