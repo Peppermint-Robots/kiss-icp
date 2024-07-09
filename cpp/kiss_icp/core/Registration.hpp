@@ -39,8 +39,13 @@ struct Registration {
                                   const double max_correspondence_distance,
                                   const double kernel_scale);
 
+    bool get_convergence_status() {
+        return converged_;
+    }
+
     int max_num_iterations_;
     double convergence_criterion_;
     int max_num_threads_;
+    bool converged_;
 };
 }  // namespace kiss_icp

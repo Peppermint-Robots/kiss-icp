@@ -189,9 +189,10 @@ Sophus::SE3d Registration::AlignPointsToMap(const std::vector<Eigen::Vector3d> &
     std::vector<Eigen::Vector3d> source = frame;
     TransformPoints(initial_guess, source);
 
+    int j;
     // ICP-loop
     Sophus::SE3d T_icp = Sophus::SE3d();
-    for (int j = 0; j < max_num_iterations_; ++j) {
+    for (j = 0; j < max_num_iterations_; ++j) {
         // Equation (10)
         const auto correspondences = DataAssociation(source, voxel_map, max_distance);
         // Equation (11)
@@ -203,8 +204,14 @@ Sophus::SE3d Registration::AlignPointsToMap(const std::vector<Eigen::Vector3d> &
         // Update iterations
         T_icp = estimation * T_icp;
         // Termination criteria
-        if (dx.norm() < convergence_criterion_) break;
+        if (dx.norm() < convergence_criterion_) {
+            converged_ = true;
+            break;
+        }
     }
+
+    if (j == max_num_iterations_) converged_ = false;
+
     // Spit the final transformation
     return T_icp * initial_guess;
 }

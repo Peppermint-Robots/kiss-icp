@@ -82,9 +82,14 @@ public:
     const Sophus::SE3d &delta() const { return last_delta_; }
     Sophus::SE3d &delta() { return last_delta_; }
 
+    bool GetConvergenceStatus() {return registration_.get_convergence_status(); }
+
+    void ResetKissICP();
+
 private:
     Sophus::SE3d last_pose_;
     Sophus::SE3d last_delta_;
+    Sophus::SE3d initial_guess_;
 
     // KISS-ICP pipeline modules
     KISSConfig config_;

@@ -52,18 +52,22 @@ KissICP::Vector3dVectorTuple KissICP::RegisterFrame(const std::vector<Eigen::Vec
     // Get adaptive_threshold
     const double sigma = adaptive_threshold_.ComputeThreshold();
 
-    // Compute initial_guess for ICP
-    const auto initial_guess = last_pose_ * last_delta_;
+    // Compute initial_guess_ for ICP
+    /**
+     * BEWARE : This is needed to reset kiss icp for auto_localization
+     *          But cannot be used for odometry purpose
+     */
+    // initial_guess_ = last_pose_ * last_delta_;
 
     // Run ICP
     const auto new_pose = registration_.AlignPointsToMap(source,         // frame
                                                          local_map_,     // voxel_map
-                                                         initial_guess,  // initial_guess
+                                                         initial_guess_,  // initial_guess_
                                                          3.0 * sigma,    // max_correspondence_dist
                                                          sigma / 3.0);   // kernel
 
     // Compute the difference between the prediction and the actual estimate
-    const auto model_deviation = initial_guess.inverse() * new_pose;
+    const auto model_deviation = initial_guess_.inverse() * new_pose;
 
     // Update step: threshold, local map, delta, and the last pose
     adaptive_threshold_.UpdateModelDeviation(model_deviation);
@@ -80,6 +84,11 @@ KissICP::Vector3dVectorTuple KissICP::Voxelize(const std::vector<Eigen::Vector3d
     const auto frame_downsample = kiss_icp::VoxelDownsample(frame, voxel_size * 0.5);
     const auto source = kiss_icp::VoxelDownsample(frame_downsample, voxel_size * 1.5);
     return {source, frame_downsample};
+}
+
+void KissICP::ResetKissICP() {
+    initial_guess_.setRotationMatrix(Eigen::Matrix3d::Identity());
+    initial_guess_.translation() = Eigen::Vector3d::Zero();
 }
 
 }  // namespace kiss_icp::pipeline
