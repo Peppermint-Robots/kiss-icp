@@ -76,8 +76,10 @@ OdometryServer::OdometryServer(const rclcpp::NodeOptions &options)
     kiss_icp::pipeline::KISSConfig config;
     initializeParameters(config);
 
+    config_ = config;
+
     // Construct the main KISS-ICP odometry node
-    kiss_icp_ = std::make_unique<kiss_icp::pipeline::KissICP>(config);
+    kiss_icp_ = std::make_unique<kiss_icp::pipeline::KissICP>(config_);
 
     // Initialize subscribers
     pointcloud_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
@@ -98,6 +100,10 @@ OdometryServer::OdometryServer(const rclcpp::NodeOptions &options)
     tf2_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf2_buffer_->setUsingDedicatedThread(true);
     tf2_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf2_buffer_);
+
+    reset_srv_ = this->create_service<std_srvs::srv::Empty>("kiss_icp/reset_odom", 
+        std::bind(&OdometryServer::onReset, this, std::placeholders::_1, std::placeholders::_2));
+    RCLCPP_INFO(this->get_logger(), "Advertised service: kiss_icp/reset_odom");
 
     RCLCPP_INFO(this->get_logger(), "KISS-ICP ROS 2 odometry node initialized");
 }
@@ -228,6 +234,16 @@ void OdometryServer::PublishClouds(const std::vector<Eigen::Vector3d> &frame,
     local_map_header.frame_id = lidar_odom_frame_;
     map_publisher_->publish(std::move(EigenToPointCloud2(kiss_map, local_map_header)));
 }
+
+void OdometryServer::onReset(
+  const std::shared_ptr<std_srvs::srv::Empty::Request> request,
+  std::shared_ptr<std_srvs::srv::Empty::Response> response)
+{
+  RCLCPP_WARN(this->get_logger(), "resetting KISS‑ICP state!");
+  kiss_icp_.reset();
+  kiss_icp_ = std::make_unique<kiss_icp::pipeline::KissICP>(config_);
+}
+
 }  // namespace kiss_icp_ros
 
 #include "rclcpp_components/register_node_macro.hpp"

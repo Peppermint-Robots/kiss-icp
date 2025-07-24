@@ -35,6 +35,8 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_msgs/msg/header.hpp>
 #include <string>
+#include <std_srvs/srv/empty.hpp>
+
 
 namespace kiss_icp_ros {
 
@@ -43,6 +45,8 @@ public:
     /// OdometryServer constructor
     OdometryServer() = delete;
     explicit OdometryServer(const rclcpp::NodeOptions &options);
+    void onReset(const std::shared_ptr<std_srvs::srv::Empty::Request>,
+        std::shared_ptr<std_srvs::srv::Empty::Response>);
 
 private:
     /// Declare ROS parameters and set the associated variables (in this class and in the provided
@@ -79,6 +83,8 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr map_publisher_;
 
     /// KISS-ICP
+    kiss_icp::pipeline::KISSConfig config_; // keep config copy for reset                     
+    rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_; //service to reset odom
     std::unique_ptr<kiss_icp::pipeline::KissICP> kiss_icp_;
 
     /// Global/map coordinate frame.
