@@ -229,7 +229,9 @@ void OdometryServer::PublishClouds(const std::vector<Eigen::Vector3d> &frame,
     kpoints_publisher_->publish(std::move(EigenToPointCloud2(keypoints, header)));
     auto local_map_header = header;
     local_map_header.frame_id = lidar_odom_frame_;
-    map_publisher_->publish(std::move(EigenToPointCloud2(kiss_map, local_map_header)));
+
+    Sophus::SE3d T = LookupTransform(base_frame_, header.frame_id, tf2_buffer_);
+    map_publisher_->publish(std::move(EigenToPointCloud2(kiss_map, T, local_map_header)));
 }
 void OdometryServer::ResetService(
     [[maybe_unused]] const std::shared_ptr<std_srvs::srv::Empty::Request> request,
