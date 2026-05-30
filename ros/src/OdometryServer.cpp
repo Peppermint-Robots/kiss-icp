@@ -189,6 +189,21 @@ void OdometryServer::PublishOdometry(const Sophus::SE3d &kiss_pose,
         return cloud2base * kiss_pose * cloud2base.inverse();
     }();
 
+    // NOTE (AdityaPatil): For Mobile Robots we should stip roll+pitch and flatten out translation.z
+    const auto projected_pose = [&]() -> Sophus::SE3d {
+        if (!config_.planar_motion) return pose;
+        // Extract yaw from the rotation matrix
+        const Eigen::Matrix3d R = pose.rotationMatrix();
+        const double yaw = std::atan2(R(1, 0), R(0, 0));
+        // Rebuild a yaw-only SO3
+        const Sophus::SO3d yaw_only =
+            Sophus::SO3d(Eigen::Quaterniond(Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ())));
+        // Zero Z translation
+        Eigen::Vector3d t = pose.translation();
+        t.z() = 0.0;
+        return Sophus::SE3d(yaw_only, t);
+    }();
+
     // Broadcast the tf ---
     if (publish_odom_tf_) {
         geometry_msgs::msg::TransformStamped transform_msg;
@@ -196,11 +211,11 @@ void OdometryServer::PublishOdometry(const Sophus::SE3d &kiss_pose,
         if (invert_odom_tf_) {
             transform_msg.header.frame_id = moving_frame;
             transform_msg.child_frame_id = lidar_odom_frame_;
-            transform_msg.transform = tf2::sophusToTransform(pose.inverse());
+            transform_msg.transform = tf2::sophusToTransform(projected_pose.inverse());
         } else {
             transform_msg.header.frame_id = lidar_odom_frame_;
             transform_msg.child_frame_id = moving_frame;
-            transform_msg.transform = tf2::sophusToTransform(pose);
+            transform_msg.transform = tf2::sophusToTransform(projected_pose);
         }
         tf_broadcaster_->sendTransform(transform_msg);
     }
@@ -210,7 +225,7 @@ void OdometryServer::PublishOdometry(const Sophus::SE3d &kiss_pose,
     odom_msg.header.stamp = header.stamp;
     odom_msg.header.frame_id = lidar_odom_frame_;
     odom_msg.child_frame_id = moving_frame;
-    odom_msg.pose.pose = tf2::sophusToPose(pose);
+    odom_msg.pose.pose = tf2::sophusToPose(projected_pose);
     odom_msg.pose.covariance.fill(0.0);
     odom_msg.pose.covariance[0] = position_covariance_;
     odom_msg.pose.covariance[7] = position_covariance_;
