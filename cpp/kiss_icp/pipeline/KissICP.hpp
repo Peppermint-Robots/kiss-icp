@@ -51,6 +51,8 @@ struct KISSConfig {
 
     // Motion compensation
     bool deskew = true;
+
+    bool planar_motion = true;
 };
 
 class KissICP {
