@@ -73,11 +73,10 @@ using utils::PointCloud2ToEigen;
 
 OdometryServer::OdometryServer(const rclcpp::NodeOptions &options)
     : rclcpp::Node("kiss_icp_node", options) {
-    kiss_icp::pipeline::KISSConfig config;
-    initializeParameters(config);
+    initializeParameters(config_);
 
     // Construct the main KISS-ICP odometry node
-    kiss_icp_ = std::make_unique<kiss_icp::pipeline::KissICP>(config);
+    kiss_icp_ = std::make_unique<kiss_icp::pipeline::KissICP>(config_);
 
     // Initialize subscribers
     pointcloud_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(

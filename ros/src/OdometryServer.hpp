@@ -94,6 +94,9 @@ private:
     /// Covariance diagonal
     double position_covariance_;
     double orientation_covariance_;
+
+    /// KISS-ICP configuration
+    kiss_icp::pipeline::KISSConfig config_;
 };
 
 }  // namespace kiss_icp_ros
