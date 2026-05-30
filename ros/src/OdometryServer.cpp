@@ -149,6 +149,8 @@ void OdometryServer::initializeParameters(kiss_icp::pipeline::KISSConfig &config
     config.max_num_threads =
         declare_parameter<int>("registration.max_num_threads", config.max_num_threads);
     RCLCPP_INFO(this->get_logger(), "\tMax number of threads: %d", config.max_num_threads);
+    config.planar_motion = declare_parameter<bool>("planar_motion", config.planar_motion);
+    RCLCPP_INFO(this->get_logger(), "\tPlanar motion (2D constraint): %d", config.planar_motion);
     if (config.max_range < config.min_range) {
         RCLCPP_WARN(get_logger(),
                     "[WARNING] max_range is smaller than min_range, settng min_range to 0.0");
