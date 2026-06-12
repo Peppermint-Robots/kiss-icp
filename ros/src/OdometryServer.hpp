@@ -54,7 +54,10 @@ private:
     void RegisterFrame(const sensor_msgs::msg::PointCloud2::ConstSharedPtr &msg);
 
     /// Stream the estimated pose to ROS
-    void PublishOdometry(const Sophus::SE3d &kiss_pose, const std_msgs::msg::Header &header);
+    void PublishOdometry(const Sophus::SE3d &kiss_pose,
+                         const Sophus::SE3d &delta,
+                         double dt,
+                         const std_msgs::msg::Header &header);
 
     /// Stream the debugging point clouds for visualization (if required)
     void PublishClouds(const std::vector<Eigen::Vector3d> &frame,
@@ -97,6 +100,10 @@ private:
 
     /// KISS-ICP configuration
     kiss_icp::pipeline::KISSConfig config_;
+
+    /// Timestamp of the previous scan, used to compute inter-frame dt for twist
+    rclcpp::Time last_stamp_{0, 0, RCL_ROS_TIME};
+    bool has_last_stamp_{false};
 };
 
 }  // namespace kiss_icp_ros

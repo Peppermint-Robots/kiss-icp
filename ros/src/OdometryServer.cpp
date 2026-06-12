@@ -166,11 +166,19 @@ void OdometryServer::RegisterFrame(const sensor_msgs::msg::PointCloud2::ConstSha
     // Register frame, main entry point to KISS-ICP pipeline
     const auto &[frame, keypoints] = kiss_icp_->RegisterFrame(points, timestamps);
 
-    // Extract the last KISS-ICP pose, ego-centric to the LiDAR
+    // Compute inter-frame dt for twist estimation
+    const rclcpp::Time current_stamp = msg->header.stamp;
+    const double dt =
+        has_last_stamp_ ? (current_stamp - last_stamp_).seconds() : 0.0;
+    last_stamp_ = current_stamp;
+    has_last_stamp_ = true;
+
+    // Extract the last KISS-ICP pose and frame-to-frame delta
     const Sophus::SE3d kiss_pose = kiss_icp_->pose();
+    const Sophus::SE3d kiss_delta = kiss_icp_->delta();
 
     // Spit the current estimated pose to ROS msgs handling the desired target frame
-    PublishOdometry(kiss_pose, msg->header);
+    PublishOdometry(kiss_pose, kiss_delta, dt, msg->header);
     // Publishing these clouds is a bit costly, so do it only if we are debugging
     if (publish_debug_clouds_) {
         PublishClouds(frame, keypoints, msg->header);
@@ -178,6 +186,8 @@ void OdometryServer::RegisterFrame(const sensor_msgs::msg::PointCloud2::ConstSha
 }
 
 void OdometryServer::PublishOdometry(const Sophus::SE3d &kiss_pose,
+                                     const Sophus::SE3d &delta,
+                                     double dt,
                                      const std_msgs::msg::Header &header) {
     // If necessary, transform the ego-centric pose to the specified base_link/base_footprint frame
     const auto cloud_frame_id = header.frame_id;
@@ -233,6 +243,40 @@ void OdometryServer::PublishOdometry(const Sophus::SE3d &kiss_pose,
     odom_msg.pose.covariance[21] = orientation_covariance_;
     odom_msg.pose.covariance[28] = orientation_covariance_;
     odom_msg.pose.covariance[35] = orientation_covariance_;
+
+    // Compute body-frame twist from the frame-to-frame delta.
+    // delta = R_prev^T * (t_new - t_prev)  (displacement in previous body frame)
+    // Linear velocity in current body frame: R_delta^T * delta.t / dt
+    // Angular velocity in body frame:       log(R_delta) / dt  (SO3 Lie algebra)
+    odom_msg.twist.covariance.fill(0.0);
+    if (dt > 1e-9) {
+        Eigen::Vector3d linear_vel =
+            delta.rotationMatrix().transpose() * delta.translation() / dt;
+        Eigen::Vector3d angular_vel = delta.so3().log() / dt;
+
+        // For planar motion, zero out z-velocity and roll/pitch rates to be
+        // consistent with the projected pose published above
+        if (config_.planar_motion) {
+            linear_vel.z() = 0.0;
+            angular_vel.x() = 0.0;
+            angular_vel.y() = 0.0;
+        }
+
+        odom_msg.twist.twist.linear.x = linear_vel.x();
+        odom_msg.twist.twist.linear.y = linear_vel.y();
+        odom_msg.twist.twist.linear.z = linear_vel.z();
+        odom_msg.twist.twist.angular.x = angular_vel.x();
+        odom_msg.twist.twist.angular.y = angular_vel.y();
+        odom_msg.twist.twist.angular.z = angular_vel.z();
+
+        odom_msg.twist.covariance[0] = position_covariance_;
+        odom_msg.twist.covariance[7] = position_covariance_;
+        odom_msg.twist.covariance[14] = position_covariance_;
+        odom_msg.twist.covariance[21] = orientation_covariance_;
+        odom_msg.twist.covariance[28] = orientation_covariance_;
+        odom_msg.twist.covariance[35] = orientation_covariance_;
+    }
+
     odom_publisher_->publish(std::move(odom_msg));
 }
 
