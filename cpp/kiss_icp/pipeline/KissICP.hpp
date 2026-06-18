@@ -53,6 +53,10 @@ struct KISSConfig {
     bool deskew = true;
 
     bool planar_motion = true;
+
+    // Velocity Smoothening
+    int window_size = 5;
+    double exp_factor = 0.3;
 };
 
 class KissICP {

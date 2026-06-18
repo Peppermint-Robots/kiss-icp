@@ -36,6 +36,7 @@
 #include <std_msgs/msg/header.hpp>
 #include <std_srvs/srv/empty.hpp>
 #include <string>
+#include <deque>
 
 namespace kiss_icp_ros {
 
@@ -104,6 +105,11 @@ private:
     /// Timestamp of the previous scan, used to compute inter-frame dt for twist
     rclcpp::Time last_stamp_{0, 0, RCL_ROS_TIME};
     bool has_last_stamp_{false};
+
+    /// Velocity Smoothening
+    std::deque<Eigen::Vector3d> linear_vel_history_;
+    std::deque<Eigen::Vector3d> angular_vel_history_;
+
 };
 
 }  // namespace kiss_icp_ros

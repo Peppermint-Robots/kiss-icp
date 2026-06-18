@@ -151,6 +151,10 @@ void OdometryServer::initializeParameters(kiss_icp::pipeline::KISSConfig &config
     RCLCPP_INFO(this->get_logger(), "\tMax number of threads: %d", config.max_num_threads);
     config.planar_motion = declare_parameter<bool>("planar_motion", config.planar_motion);
     RCLCPP_INFO(this->get_logger(), "\tPlanar motion (2D constraint): %d", config.planar_motion);
+    config.window_size = declare_parameter<int>("velocity_smoothing.window_size", config.window_size);
+    RCLCPP_INFO(this->get_logger(), "\tWindow Size for Velocity Smoothening: %d", config.window_size);
+    config.exp_factor = declare_parameter<double>("velocity_smoothing.exp_factor", config.exp_factor);
+    RCLCPP_INFO(this->get_logger(), "\tExponent Factor for Velocity Smoothening: %f", config.exp_factor);
     if (config.max_range < config.min_range) {
         RCLCPP_WARN(get_logger(),
                     "[WARNING] max_range is smaller than min_range, settng min_range to 0.0");
@@ -262,12 +266,51 @@ void OdometryServer::PublishOdometry(const Sophus::SE3d &kiss_pose,
             angular_vel.y() = 0.0;
         }
 
-        odom_msg.twist.twist.linear.x = linear_vel.x();
-        odom_msg.twist.twist.linear.y = linear_vel.y();
-        odom_msg.twist.twist.linear.z = linear_vel.z();
-        odom_msg.twist.twist.angular.x = angular_vel.x();
-        odom_msg.twist.twist.angular.y = angular_vel.y();
-        odom_msg.twist.twist.angular.z = angular_vel.z();
+        linear_vel_history_.push_front(linear_vel);
+        angular_vel_history_.push_front(angular_vel);
+
+        while (linear_vel_history_.size() > config_.window_size) {
+            linear_vel_history_.pop_back();
+        }
+
+        while (angular_vel_history_.size() > config_.window_size) {
+            angular_vel_history_.pop_back();
+        }
+
+        auto computeWeightedAverage =
+            [this](const std::deque<Eigen::Vector3d>& history)
+        {
+            Eigen::Vector3d result = Eigen::Vector3d::Zero();
+
+            double weight = 1.0;
+            double weight_sum = 0.0;
+
+            for (const auto& sample : history) {
+                result += weight * sample;
+                weight_sum += weight;
+
+                weight *= config_.exp_factor;
+            }
+
+            if (weight_sum > 0.0) {
+                result /= weight_sum;
+            }
+
+            return result;
+        };
+
+        Eigen::Vector3d filtered_linear =
+            computeWeightedAverage(linear_vel_history_);
+
+        Eigen::Vector3d filtered_angular =
+            computeWeightedAverage(angular_vel_history_);
+
+        odom_msg.twist.twist.linear.x = filtered_linear.x();
+        odom_msg.twist.twist.linear.y = filtered_linear.y();
+        odom_msg.twist.twist.linear.z = filtered_linear.z();
+        odom_msg.twist.twist.angular.x = filtered_angular.x();
+        odom_msg.twist.twist.angular.y = filtered_angular.y();
+        odom_msg.twist.twist.angular.z = filtered_angular.z();
 
         odom_msg.twist.covariance[0] = position_covariance_;
         odom_msg.twist.covariance[7] = position_covariance_;
