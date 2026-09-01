@@ -25,6 +25,7 @@
 #include <Eigen/Core>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <sophus/se3.hpp>
 #include <vector>
 
@@ -47,26 +48,46 @@ std::tuple<Eigen::Vector3d, double> VoxelHashMap::GetClosestNeighbor(
     const Eigen::Vector3d &query) const {
     // Convert the point to voxel coordinates
     const auto &voxel = PointToVoxel(query, voxel_size_);
+
+    // Offset of the query inside its own voxel, in [0, voxel_size_) per axis. Used to derive a
+    // lower bound on the distance to each candidate voxel: for a shift of -1 the nearest possible
+    // point of that voxel is `offset` away along the axis, for +1 it is `voxel_size_ - offset`,
+    // and for 0 the voxel spans the query so the bound contributes nothing.
+    const Eigen::Vector3d voxel_origin = voxel.cast<double>() * voxel_size_;
+    const Eigen::Vector3d offset = query - voxel_origin;
+    const auto axis_lower_bound_sq = [&](const int shift, const double axis_offset) {
+        if (shift == 0) return 0.0;
+        const double gap = (shift < 0) ? axis_offset : (voxel_size_ - axis_offset);
+        return gap * gap;
+    };
+
     // Find the nearest neighbor
     Eigen::Vector3d closest_neighbor = Eigen::Vector3d::Zero();
-    double closest_distance = std::numeric_limits<double>::max();
+    double closest_distance_sq = std::numeric_limits<double>::max();
     std::for_each(voxel_shifts.cbegin(), voxel_shifts.cend(), [&](const auto &voxel_shift) {
+        // Skip voxels that cannot possibly hold anything closer than the current best. This is an
+        // exact prune (the bound is never larger than the true distance), it only avoids work.
+        const double lower_bound_sq = axis_lower_bound_sq(voxel_shift.x(), offset.x()) +
+                                      axis_lower_bound_sq(voxel_shift.y(), offset.y()) +
+                                      axis_lower_bound_sq(voxel_shift.z(), offset.z());
+        if (lower_bound_sq >= closest_distance_sq) return;
+
         const auto &query_voxel = voxel + voxel_shift;
         auto search = map_.find(query_voxel);
         if (search != map_.end()) {
             const auto &points = search.value();
-            const Eigen::Vector3d &neighbor = *std::min_element(
-                points.cbegin(), points.cend(), [&](const auto &lhs, const auto &rhs) {
-                    return (lhs - query).norm() < (rhs - query).norm();
-                });
-            double distance = (neighbor - query).norm();
-            if (distance < closest_distance) {
-                closest_neighbor = neighbor;
-                closest_distance = distance;
-            }
+            // Single flat pass: min_element recomputes the norm of both operands on every
+            // comparison, so scanning once while tracking the running best is cheaper.
+            std::for_each(points.cbegin(), points.cend(), [&](const auto &point) {
+                const double distance_sq = (point - query).squaredNorm();
+                if (distance_sq < closest_distance_sq) {
+                    closest_neighbor = point;
+                    closest_distance_sq = distance_sq;
+                }
+            });
         }
     });
-    return std::make_tuple(closest_neighbor, closest_distance);
+    return std::make_tuple(closest_neighbor, std::sqrt(closest_distance_sq));
 }
 
 std::vector<Eigen::Vector3d> VoxelHashMap::Pointcloud() const {
